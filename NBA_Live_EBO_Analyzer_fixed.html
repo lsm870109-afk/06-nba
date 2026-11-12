@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NBA Live EBO 분석기</title>
+<style>
+:root{--bg:#10141c;--panel:#1a2230;--panel2:#202b3b;--line:#344257;--text:#e9eef7;--muted:#9eacc0;--accent:#72b7ff;--good:#62d6a1;--warn:#ffcc70;--bad:#ff8585}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",Arial,sans-serif}
+header{padding:22px 26px;border-bottom:1px solid var(--line);background:#151c27}
+h1{font-size:22px;margin:0 0 5px}h2{font-size:16px;margin:0 0 12px}p{margin:6px 0;color:var(--muted)}
+main{max-width:1400px;margin:auto;padding:20px;display:grid;grid-template-columns:340px 1fr;gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.wide{grid-column:1/-1}.drop{border:1px dashed #5b789c;border-radius:10px;padding:22px;text-align:center;background:#172333}
+button,.filebtn{border:1px solid #54769b;background:#24496c;color:white;padding:9px 13px;border-radius:8px;cursor:pointer;font-weight:600}
+button:disabled{opacity:.4;cursor:not-allowed}.secondary{background:#263244;border-color:#43536b}.danger{background:#4b292d;border-color:#81474e}
+input[type=file]{display:none}input[type=number],select{background:#111a26;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px;width:100%}
+label{display:block;color:var(--muted);margin:10px 0 4px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stat{background:var(--panel2);padding:10px;border-radius:8px}.stat b{display:block;font-size:19px}.stat small{color:var(--muted)}
+canvas{width:100%;height:440px;display:block;background:#0b111a;border-radius:9px;border:1px solid var(--line)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.tabs button.active{background:#356c9e}
+pre,textarea{white-space:pre-wrap;word-break:break-word;background:#0d141e;color:#cbd8e8;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:260px;overflow:auto;width:100%;font:12px/1.45 Consolas,monospace}
+table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--line);padding:7px;text-align:left}th{color:var(--muted)}
+.note{border-left:3px solid var(--warn);padding:8px 10px;background:#2b261c;color:#f0d9ad;border-radius:4px;margin:10px 0}
+.ok{color:var(--good)}.muted{color:var(--muted)}.small{font-size:12px}
+@media(max-width:900px){main{grid-template-columns:1fr}.wide{grid-column:auto}canvas{height:340px}}
+</style>
+</head>
+<body>
+<header><h1>NBA Live EBO 분석기</h1><p>로컬 브라우저 처리 · EBO 구조 확인 · 정점 추출 · 인덱스 후보 검사 · OBJ 내보내기</p></header>
+<main>
+<section class="panel">
+<h2>1. EBO 파일 불러오기</h2>
+<div class="drop" id="drop"><b>파일을 여기에 놓기</b><p>또는 아래 버튼으로 EBO 선택</p><label class="filebtn"><input id="file" type="file" accept=".ebo,.bin,*/*">EBO 파일 선택</label></div>
+<p id="filename" class="small">파일이 선택되지 않았습니다.</p>
+<div class="stats">
+<div class="stat"><small>파일 크기</small><b id="filesize">—</b></div>
+<div class="stat"><small>정점 후보</small><b id="vcount">—</b></div>
+<div class="stat"><small>인덱스 후보</small><b id="icount">—</b></div>
+</div>
+<label>정점 데이터 오프셋 (16진수)</label><input id="voff" value="0x1BC">
+<label>정점 개수</label><input id="vnum" type="number" value="573" min="1">
+<div class="row" style="margin-top:10px"><button id="extract" disabled>정점 추출 및 분석</button><button id="header" class="secondary" disabled>헤더 보기</button></div>
+<div class="note small">주의: 0x1BC / 573은 이전 파일에서 사용한 후보값입니다. 다른 EBO에 그대로 적용하면 안 됩니다.</div>
+</section>
+<section class="panel">
+<h2>2. 3D 미리보기</h2>
+<div class="tabs"><button class="active" id="pointsTab">정점</button><button id="wireTab" class="secondary" disabled>메시 후보</button><button id="resetView" class="secondary">화면 맞춤</button></div>
+<canvas id="view" width="1000" height="600"></canvas>
+<p id="viewstatus">EBO를 불러오고 정점을 추출하세요. 마우스 드래그로 회전, 휠로 확대할 수 있습니다.</p>
+</section>
+<section class="panel">
+<h2>3. 데이터 구조 / 헤더</h2>
+<pre id="headerout">파일을 불러오면 헤더 바이트와 주요 오프셋을 표시합니다.</pre>
+<h2 style="margin-top:18px">정점 좌표 범위</h2>
+<pre id="bounds">아직 추출하지 않았습니다.</pre>
+</section>
+<section class="panel">
+<h2>4. 인덱스 후보 검사</h2>
+<p>정점 블록 뒤쪽에서 16비트 / 32비트 정수열을 검사합니다. 후보는 자동 확정되지 않습니다.</p>
+<div class="row"><button id="scan" disabled>인덱스 후보 검색</button><button id="exportPoints" disabled class="secondary">점 OBJ 저장</button></div>
+<div style="overflow:auto;max-height:300px;margin-top:10px">
+<table><thead><tr><th>오프셋</th><th>형식</th><th>값 수</th><th>범위 내 비율</th><th>유효 삼각형 추정</th><th>선택</th></tr></thead><tbody id="candidates"><tr><td colspan="6" class="muted">정점 추출 후 검색하세요.</td></tr></tbody></table>
+</div>
+<div class="note small">인덱스 후보는 숫자 범위와 배열 형태만으로 찾습니다. 실제 삼각형 연결인지, 어느 메시 그룹에 속하는지는 원본 포맷 규칙과 시각적 검증이 필요합니다.</div>
+</section>
+<section class="panel wide">
+<h2>5. 선택한 후보로 메시 OBJ 내보내기</h2>
+<div class="row">
+<div><label>인덱스 시작 위치</label><input id="ioff" placeholder="후보 선택 시 자동 입력"></div>
+<div><label>인덱스 형식</label><select id="itype"><option value="u16">16-bit unsigned</option><option value="u32">32-bit unsigned</option></select></div>
+<div><label>인덱스 개수</label><input id="inum" type="number" min="3" placeholder="후보 선택 시 자동 입력"></div>
+</div>
+<div class="row" style="margin-top:12px"><button id="previewMesh" disabled>선택 후보 미리보기</button><button id="exportMesh" disabled class="secondary">메시 OBJ 저장</button></div>
+<p id="meshstatus">현재는 점 데이터만 준비되어 있습니다. 검증되지 않은 인덱스로 OBJ를 내보내지 않도록 미리보기에서 면 연결 상태를 확인하세요.</p>
+<pre id="log">분석 로그가 여기에 표시됩니다.</pre>
+</section>
+<section class="panel wide">
+<h2>사용 순서와 한계</h2>
+<ol>
+<li>EBO를 선택하고 정점 오프셋 / 개수를 확인한 뒤 정점을 추출합니다.</li>
+<li>3D 창에서 점들이 얼굴 형태로 배열되는지 확인합니다.</li>
+<li>인덱스 후보 검색을 실행하고 후보를 선택합니다.</li>
+<li>메시 미리보기에서 면이 얼굴 표면을 자연스럽게 덮는지 확인합니다.</li>
+<li>정상적인 연결임을 확인한 뒤 메시 OBJ를 저장합니다.</li>
+</ol>
+<p class="small">이 도구는 파일을 서버로 전송하지 않습니다. 브라우저 메모리 안에서 처리합니다. 현재 EBO 포맷의 전체 명세가 알려져 있지 않으므로, 헤더·정점 추출·인덱스 후보 탐색을 지원하지만 모든 EBO에서 삼각형을 자동 복원한다고 보장하지 않습니다. UV / 노멀 / 본 / 모프 데이터는 아직 OBJ로 변환하지 않습니다.</p>
+</section>
+</main>
+<script>
+(function(){
+"use strict";
+var data=null, verts=[], candidates=[], chosen=null, faces=[], mode="points";
+var canvas=document.getElementById("view"),ctx=canvas.getContext("2d");
+var yaw=-0.55,pitch=0.15,zoom=1,drag=false,lastX=0,lastY=0;
+function $(id){return document.getElementById(id)}
+function log(s){$("log").textContent=s}
+function hex(n){return "0x"+n.toString(16).toUpperCase()}
+function fmt(n){return Number(n).toLocaleString("en-US")}
+function loadFile(file){
+ var r=new FileReader();r.onload=function(){data=new Uint8Array(r.result);$("filename").textContent=file.name;$("filesize").textContent=fmt(data.length);$("extract").disabled=false;$("header").disabled=false;$("scan").disabled=true;$("exportPoints").disabled=true;$("vcount").textContent="—";$("icount").textContent="—";verts=[];candidates=[];chosen=null;faces=[];mode="points";$("wireTab").disabled=true;$("candidates").innerHTML='<tr><td colspan="6">정점 추출 후 검색하세요.</td></tr>';showHeader();draw();log("파일 로드 완료: "+file.name+" ("+data.length+" bytes)");};r.readAsArrayBuffer(file)
+}
+$("file").addEventListener("change",function(e){if(e.target.files[0])loadFile(e.target.files[0])});
+var drop=$("drop");drop.addEventListener("dragover",function(e){e.preventDefault();drop.style.borderColor="#72b7ff"});drop.addEventListener("dragleave",function(){drop.style.borderColor=""});drop.addEventListener("drop",function(e){e.preventDefault();drop.style.borderColor="";if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0])});
+function u32(o){return o+4<=data.length?(data[o]|data[o+1]<<8|data[o+2]<<16|data[o+3]<<24)>>>0:null}
+function showHeader(){
+ var lines=["파일 크기: "+data.length+" bytes","첫 64바이트:"];
+ for(var i=0;i<Math.min(64,data.length);i+=16){var a=[];for(var j=i;j<Math.min(i+16,data.length);j++)a.push(data[j].toString(16).padStart(2,"0"));lines.push(hex(i)+": "+a.join(" "))}
+ lines.push("","주요 32-bit little-endian 값:");
+ for(var k=0;k<Math.min(64,data.length-3);k+=4)lines.push(hex(k)+" = "+u32(k));
+ $("headerout").textContent=lines.join("\n")
+}
+$("header").onclick=showHeader;
+function parseNum(s){return parseInt(s, s.indexOf("0x")===0?16:10)}
+$("extract").onclick=function(){
+ try{
+ var off=parseNum($("voff").value),n=parseInt($("vnum").value,10);
+ if(!isFinite(off)||!isFinite(n)||off<0||n<1||off+n*12>data.length)throw Error("오프셋 또는 정점 개수가 파일 범위를 벗어났습니다.");
+ var dv=new DataView(data.buffer,data.byteOffset,data.byteLength),v=[];
+ for(var i=0;i<n;i++){var p=off+i*12,x=dv.getFloat32(p,true),y=dv.getFloat32(p+4,true),z=dv.getFloat32(p+8,true);if(!isFinite(x)||!isFinite(y)||!isFinite(z))throw Error("정점 "+i+"에서 유효하지 않은 실수가 발견됐습니다.");v.push([x,y,z])}
+ verts=v;$("vcount").textContent=fmt(v.length);$("exportPoints").disabled=false;$("scan").disabled=false;
+ var mn=[Infinity,Infinity,Infinity],mx=[-Infinity,-Infinity,-Infinity];v.forEach(function(p){for(var a=0;a<3;a++){mn[a]=Math.min(mn[a],p[a]);mx[a]=Math.max(mx[a],p[a])}});
+ $("bounds").textContent="X: "+mn[0].toFixed(6)+" ~ "+mx[0].toFixed(6)+"\nY: "+mn[1].toFixed(6)+" ~ "+mx[1].toFixed(6)+"\nZ: "+mn[2].toFixed(6)+" ~ "+mx[2].toFixed(6);
+ $("viewstatus").textContent=fmt(v.length)+"개 정점 표시 중. 드래그로 회전 / 휠로 확대.";
+ log("정점 추출 성공\n오프셋: "+hex(off)+"\n정점 수: "+n+"\n좌표 범위:\n"+$("bounds").textContent);
+ draw()
+ }catch(e){log("정점 추출 오류: "+e.message)}
+};
+function project(p){
+ var x=p[0],y=p[1],z=p[2],cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+ var xx=x*cy-z*sy,zz=x*sy+z*cy, yy=y*cp-zz*sp, z2=y*sp+zz*cp;
+ var scale=Math.min(canvas.width,canvas.height)*0.72*zoom;
+ return [canvas.width/2+xx*scale,canvas.height/2-yy*scale,z2]
+}
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#0b111a";ctx.fillRect(0,0,canvas.width,canvas.height);
+ if(!verts.length){ctx.fillStyle="#9eacc0";ctx.font="18px Arial";ctx.fillText("EBO 파일을 불러오고 정점을 추출하세요",30,50);return}
+ var pts=verts.map(function(p,i){var q=project(p);return {x:q[0],y:q[1],z:q[2],i:i}});
+ if(mode==="mesh"&&faces.length){
+  ctx.strokeStyle="rgba(114,183,255,.28)";ctx.lineWidth=1;
+  faces.forEach(function(f){var a=pts[f[0]],b=pts[f[1]],c=pts[f[2]];if(!a||!b||!c)return;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.closePath();ctx.stroke()})
+ }
+ pts.sort(function(a,b){return a.z-b.z});ctx.fillStyle=mode==="mesh"?"#ffd17b":"#72b7ff";
+ pts.forEach(function(p){ctx.beginPath();ctx.arc(p.x,p.y,mode==="mesh"?2.1:2.8,0,Math.PI*2);ctx.fill()})
+}
+$("pointsTab").onclick=function(){mode="points";$("pointsTab").className="active";$("wireTab").className="secondary";draw()};
+$("wireTab").onclick=function(){if(!faces.length)return;mode="mesh";$("wireTab").className="active";$("pointsTab").className="secondary";draw()};
+$("resetView").onclick=function(){yaw=-.55;pitch=.15;zoom=1;draw()};
+canvas.addEventListener("mousedown",function(e){drag=true;lastX=e.clientX;lastY=e.clientY});window.addEventListener("mouseup",function(){drag=false});window.addEventListener("mousemove",function(e){if(!drag)return;yaw+=(e.clientX-lastX)*.008;pitch+=(e.clientY-lastY)*.008;lastX=e.clientX;lastY=e.clientY;draw()});canvas.addEventListener("wheel",function(e){e.preventDefault();zoom*=e.deltaY<0?1.08:.92;zoom=Math.max(.15,Math.min(8,zoom));draw()},{passive:false});
+function scan(){
+ candidates=[];var start=parseNum($("voff").value)+parseInt($("vnum").value,10)*12;
+ var scanStart=Math.max(0,start),limit=data.length;
+ function test(width){
+  var step=width,runStart=-1,run=[],maxRun=0;
+  for(var p=scanStart;p+width<=limit;p+=step){
+   var val=width===2?(data[p]|data[p+1]<<8)>>>0:u32(p);
+   var valid=val<verts.length;
+   if(valid){if(runStart<0)runStart=p;run.push(val)}
+   else{if(run.length>=24)addCandidate(runStart,width,run);runStart=-1;run=[]}
+  }
+  if(run.length>=24)addCandidate(runStart,width,run)
+ }
+ function addCandidate(off,w,arr){
+  var tri=arr.length-arr.length%3,distinct={},bad=0;
+  for(var i=0;i<arr.length;i++)distinct[arr[i]]=1;
+  var unique=Object.keys(distinct).length;
+  if(tri<24)return;
+  candidates.push({off:off,w:w,count:arr.length,tri:tri/3,unique:unique,arr:arr.slice()})
+ }
+ test(2);test(4);
+ candidates.sort(function(a,b){return (b.count-b.unique*.05)-(a.count-a.unique*.05)});
+ // Deduplicate nearby same region; report top 60
+ var out=candidates.slice(0,60);$("icount").textContent=fmt(out.length);
+ var body=$("candidates");body.innerHTML="";
+ if(!out.length){body.innerHTML='<tr><td colspan="6">범위에 맞는 연속 정수열 후보를 찾지 못했습니다.</td></tr>';return}
+ out.forEach(function(c,idx){var tr=document.createElement("tr");var rate=(c.count?100:0).toFixed(0);tr.innerHTML="<td>"+hex(c.off)+"</td><td>"+(c.w===2?"u16":"u32")+"</td><td>"+c.count+"</td><td>"+rate+"%*</td><td>"+c.tri+"</td><td><button class='secondary' data-i='"+idx+"'>선택</button></td>";body.appendChild(tr)});
+ body.querySelectorAll("button").forEach(function(b){b.onclick=function(){var c=out[parseInt(b.getAttribute("data-i"),10)];chosen=c;$("ioff").value=hex(c.off);$("itype").value=c.w===2?"u16":"u32";$("inum").value=c.count;$("previewMesh").disabled=false;$("exportMesh").disabled=false;log("선택 후보\n오프셋: "+hex(c.off)+"\n형식: "+(c.w===2?"16-bit":"32-bit")+"\n값 수: "+c.count+"\n완전한 삼각형 수(나머지 제외): "+c.tri+"\n고유 정점 인덱스 수: "+c.unique+"\n\n주의: 범위에 들어오는 정수열이라는 뜻일 뿐, 실제 면 인덱스라는 보장은 없습니다.")}});
+}
+$("scan").onclick=scan;
+function download(name,text){var blob=new Blob([text],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1000)}
+$("exportPoints").onclick=function(){if(!verts.length)return;var s="# Point-only OBJ extracted from EBO\n";verts.forEach(function(p){s+="v "+p[0].toPrecision(9)+" "+p[1].toPrecision(9)+" "+p[2].toPrecision(9)+"\n"});s+="\ng points\np "+verts.map(function(p,i){return i+1}).join(" ")+"\n";download("EBO_points.obj",s)};
+function readCandidate(){
+ var off=parseNum($("ioff").value),w=$("itype").value==="u16"?2:4,n=parseInt($("inum").value,10);
+ if(!isFinite(off)||!isFinite(n)||off<0||n<3||off+n*w>data.length)throw Error("인덱스 오프셋/개수가 파일 범위를 벗어났습니다.");
+ var arr=[],dv=new DataView(data.buffer,data.byteOffset,data.byteLength);
+ for(var i=0;i<n;i++){var v=w===2?dv.getUint16(off+i*w,true):dv.getUint32(off+i*w,true);if(v>=verts.length)throw Error("정점 범위 밖 인덱스 발견: "+v+" (위치 "+i+")");arr.push(v)}
+ return arr
+}
+$("previewMesh").onclick=function(){
+ try{var a=readCandidate(),f=[];for(var i=0;i+2<a.length;i+=3){if(a[i]!==a[i+1]&&a[i+1]!==a[i+2]&&a[i]!==a[i+2])f.push([a[i],a[i+1],a[i+2]])}
+ faces=f;$("wireTab").disabled=false;$("wireTab").click();$("meshstatus").textContent="미리보기: "+f.length+"개 삼각형. 화면에서 얼굴 표면을 구성하는지 확인하세요.";log("메시 후보 미리보기\n삼각형: "+f.length+"\n정점 인덱스 범위: 0~"+(verts.length-1)+"\n주의: 연결 구조의 의미는 미확정입니다.")
+ }catch(e){$("meshstatus").textContent=e.message;log("미리보기 실패: "+e.message)}
+};
+$("exportMesh").onclick=function(){
+ try{var a=readCandidate(),s="# Candidate mesh OBJ. Validate topology before use.\n";verts.forEach(function(p){s+="v "+p[0].toPrecision(9)+" "+p[1].toPrecision(9)+" "+p[2].toPrecision(9)+"\n"});s+="\ng candidate_faces\n";var count=0;for(var i=0;i+2<a.length;i+=3){if(a[i]!==a[i+1]&&a[i+1]!==a[i+2]&&a[i]!==a[i+2]){s+="f "+(a[i]+1)+" "+(a[i+1]+1)+" "+(a[i+2]+1)+"\n";count++}}download("EBO_candidate_mesh.obj",s);$("meshstatus").textContent="후보 메시 OBJ 저장 완료: "+count+"개 삼각형. 반드시 Rhino에서 형상을 검증하세요."
+ }catch(e){$("meshstatus").textContent=e.message;log("OBJ 저장 실패: "+e.message)}
+};
+draw();
+})();
+</script>
+</body>
+</html>
