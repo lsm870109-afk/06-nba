@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NBA Live 06 몸 비율 조절</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1c2330;--mut:#667085;--card:#fff;--bd:#d9dee6;--ac:#2563eb;--ok:#15803d;--wr:#b45309}
+@media(prefers-color-scheme:dark){:root{--bg:#10141b;--fg:#e6e9ef;--mut:#98a2b3;--card:#171c26;--bd:#2a3342;--ac:#6ea0ff;--ok:#4ade80;--wr:#fbbf24}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,"Malgun Gothic",sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:20px;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.row{display:grid;grid-template-columns:110px 1fr 70px;gap:10px;align-items:center;margin:8px 0}
+input[type=range]{width:100%}.v{font-variant-numeric:tabular-nums;text-align:right}.nv{width:70px;text-align:right;font-variant-numeric:tabular-nums}
+button{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:inherit;cursor:pointer}
+button.g{background:transparent;color:var(--fg);border:1px solid var(--bd)}button:disabled{opacity:.4;cursor:default}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:720px){.grid{grid-template-columns:1fr}}
+canvas{width:100%;height:auto;background:var(--bg);border:1px solid var(--bd);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:4px 6px;border-bottom:1px solid var(--bd);text-align:right}th:first-child,td:first-child{text-align:left}
+.ok{color:var(--ok)}.wr{color:var(--wr)}.m{color:var(--mut);font-size:13px}
+</style></head><body><main>
+<h1>NBA Live 06 몸 비율 조절</h1>
+<p class="s">원본 <b>base_lodB.ebo</b>를 불러와 발 크기, 다리 길이, 팔 길이를 조절하고 새 파일로 저장합니다. 원본은 수정되지 않으며, 파일은 이 브라우저 안에서만 처리됩니다.</p>
+<div class="card"><input type="file" id="f" accept=".ebo"> <span id="st" class="m"></span></div>
+<div class="card" id="ctl" hidden>
+<div class="row"><label>발 크기</label><input type="range" id="shoe" min="0.5" max="1.6" step="0.01" value="1"><input type="number" class="nv" id="shoeN" min="0.5" max="1.6" step="0.01" value="1"></div>
+<div class="row"><label>다리 길이</label><input type="range" id="leg" min="0.5" max="1.6" step="0.01" value="1"><input type="number" class="nv" id="legN" min="0.5" max="1.6" step="0.01" value="1"></div>
+<div class="row"><label>팔 길이</label><input type="range" id="arm" min="0.5" max="1.6" step="0.01" value="1"><input type="number" class="nv" id="armN" min="0.5" max="1.6" step="0.01" value="1"></div>
+<div class="row"><label>팔 위치 보정</label><input type="range" id="comp" min="-1" max="2" step="0.05" value="0.5"><input type="number" class="nv" id="compN" min="-1" max="2" step="0.05" value="0.5"></div>
+<div class="row"><label>팔 높이</label><input type="range" id="ah" min="-1" max="1" step="0.01" value="0"><input type="number" class="nv" id="ahN" min="-1" max="1" step="0.01" value="0"></div>
+<div class="row"><label>몸통 가로 폭</label><input type="range" id="tw" min="0.7" max="1.6" step="0.01" value="1"><input type="number" class="nv" id="twN" min="0.7" max="1.6" step="0.01" value="1"></div>
+<div class="row"><label>어깨 시작 위치</label><input type="range" id="sx" min="-0.4" max="0.6" step="0.01" value="0"><input type="number" class="nv" id="sxN" min="-0.4" max="0.6" step="0.01" value="0"></div>
+<div class="row"><label>어깨 높이</label><input type="range" id="sh" min="-1" max="1" step="0.01" value="0"><input type="number" class="nv" id="shN" min="-1" max="1" step="0.01" value="0"></div>
+<div class="row"><label>어깨 너비</label><input type="range" id="sw" min="0.6" max="1.4" step="0.01" value="1"><input type="number" class="nv" id="swN" min="0.6" max="1.4" step="0.01" value="1"></div>
+<div class="row"><label>골반 높이</label><input type="range" id="pv" min="-0.6" max="0.6" step="0.01" value="0"><input type="number" class="nv" id="pvN" min="-0.6" max="0.6" step="0.01" value="0"></div>
+<div class="row"><label>손 크기</label><input type="range" id="hd" min="0.6" max="2" step="0.01" value="1"><input type="number" class="nv" id="hdN" min="0.6" max="2" step="0.01" value="1"></div>
+<div class="row"><label>팔꿈치 위치</label><input type="range" id="el" min="-0.6" max="0.6" step="0.01" value="0"><input type="number" class="nv" id="elN" min="-0.6" max="0.6" step="0.01" value="0"></div>
+<div class="row"><label>허리 늘어나는 범위</label><input type="range" id="tl" min="0.3" max="1.5" step="0.01" value="0.8"><input type="number" class="nv" id="tlN" min="0.3" max="1.5" step="0.01" value="0.8"></div>
+<div class="row"><label>팔 두께</label><input type="range" id="ta" min="0.7" max="1.6" step="0.01" value="1"><input type="number" class="nv" id="taN" min="0.7" max="1.6" step="0.01" value="1"></div>
+<div class="row"><label>다리 두께</label><input type="range" id="tg" min="0.7" max="1.6" step="0.01" value="1"><input type="number" class="nv" id="tgN" min="0.7" max="1.6" step="0.01" value="1"></div>
+<div class="row"><label>다리 방식</label><select id="mode"><option value="pelvis">골반 기준 (골반 높이로 다리 자동, 어깨·머리 고정)</option><option value="up">전체 높이 변경 (발이 바닥에 닿음, 권장)</option><option value="hip">골반 고정 (발이 바닥에서 뜨거나 가라앉음)</option></select><span></span></div>
+<p class="m" id="md"></p>
+<div style="display:flex;gap:8px;margin-top:10px"><button id="dl">수정본 저장</button><button class="g" id="rs">기본값(슬램덩크 SD)</button><button class="g" id="nt">원본 비율</button></div>
+<p class="m" id="nm"></p></div>
+<div class="grid" id="viz" hidden>
+<div class="card"><b>미리보기</b> <span class="m">(회색=원본, 파랑=수정본)</span><canvas id="cv" width="420" height="520"></canvas></div>
+<div class="card"><b>보고</b><div id="rep"></div></div></div>
+</main><script>
+const H=3.774,A=0.6,S=0.7;let D=null,SH=[],hdr=0,note='';
+const $=id=>document.getElementById(id);
+function refDec(d){let flags=d[0];if(d[1]!==0xFB)throw 0;let p=2,n=(flags&0x80)?4:3;if(flags&1)p+=n;let size=0;for(let i=0;i<n;i++)size=size*256+d[p+i];p+=n;const out=new Uint8Array(size);let o=0;
+while(p<d.length){let c=d[p++],nl,ln,dist;
+if(c<0x80){const c2=d[p++];nl=c&3;for(let i=0;i<nl;i++)out[o++]=d[p++];ln=((c&0x1c)>>2)+3;dist=((c&0x60)<<3)+c2+1}
+else if(c<0xC0){const c2=d[p++],c3=d[p++];nl=(c2>>6)&3;for(let i=0;i<nl;i++)out[o++]=d[p++];ln=(c&0x3f)+4;dist=((c2&0x3f)<<8)+c3+1}
+else if(c<0xE0){const c2=d[p++],c3=d[p++],c4=d[p++];nl=c&3;for(let i=0;i<nl;i++)out[o++]=d[p++];ln=((c&0x0c)<<6)+c4+5;dist=((c&0x10)<<12)+(c2<<8)+c3+1}
+else if(c<0xFC){nl=((c&0x1f)<<2)+4;for(let i=0;i<nl;i++)out[o++]=d[p++];continue}
+else{nl=c&3;for(let i=0;i<nl;i++)out[o++]=d[p++];break}
+for(let i=0;i<ln;i++){out[o]=out[o-dist];o++}}
+return out}
+function scan(d){const dv=new DataView(d.buffer,d.byteOffset,d.byteLength);const seen=new Set(),out=[];const nw=(d.length>>2)-6;
+for(let i=0;i<nw;i++){const c=dv.getUint32(i*4,true);if(c<9||c>=8000)continue;if(dv.getUint32(i*4+4,true)!==3||dv.getUint32(i*4+8,true)!==0)continue;
+const po=dv.getUint32(i*4+12,true);if(po<=0||po>=d.length)continue;const off=po+0x1c;if(off+c*12>d.length||off%4||seen.has(off))continue;
+let ok=true,mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(let k=0;k<c*3;k++){const v=dv.getFloat32(off+k*4,true);if(!isFinite(v)||Math.abs(v)>=100){ok=false;break}const a=k%3;if(v<mn[a])mn[a]=v;if(v>mx[a])mx[a]=v}
+if(!ok)continue;seen.add(off);out.push({off,c,mn,mx,hand:c<300&&Math.min(Math.abs(mn[0]),Math.abs(mx[0]))>2.4&&mn[0]*mx[0]>0&&mx[1]<5.5,head:mn[1]>5.1&&Math.max(Math.abs(mn[0]),Math.abs(mx[0]))<0.4,shoe:c>=100&&mx[1]<0.7&&mn[1]>-0.05&&mn[0]<-0.3&&mx[0]>0.3})}
+return out}
+function load(buf){let d=new Uint8Array(buf);note='';
+if(d[1]===0xFB){try{d=refDec(d);note='압축 파일을 풀어서 불러왔습니다. 저장본은 압축하지 않은 형식입니다.'}catch(e){$('st').textContent='압축 해제 실패';return}}
+if(!(d[0]===0x45&&d[1]===0x42&&d[2]===0x4F)){$('st').innerHTML='<span class="wr">EBO 파일이 아닙니다.</span>';return}
+const dv=new DataView(d.buffer,d.byteOffset,d.byteLength);hdr=dv.getUint32(8,true);
+if(hdr<d.length){d=d.slice(0,hdr);note+=(note?' ':'')+'끝의 여백 '+(buf.byteLength-hdr)+'바이트를 제거해 헤더 크기에 맞췄습니다.'}
+D=d;SH=scan(D);const nv=SH.reduce((a,s)=>a+s.c,0);
+$('st').innerHTML='<span class="ok">읽기 완료</span> · '+D.length.toLocaleString()+'바이트 · 정점 묶음 '+SH.length+'개 · 정점 '+nv.toLocaleString()+'개';
+$('ctl').hidden=false;$('viz').hidden=false;update()}
+function sm(v,a,b){const t=Math.min(1,Math.max(0,(v-a)/(b-a)));return t*t*(3-2*t)}
+function mapPt(x,y,z,sh,k){let X=x,Y=y,Z=z;
+if(Math.abs(x)>S&&y>4.0){let a=Math.abs(x);const E0=1.6,Wr=2.5,Ex=E0+k.el;if(a<Wr)a=a<=E0?S+(a-S)*(Ex-S)/(E0-S):Ex+(a-E0)*(Wr-Ex)/(Wr-E0);X=Math.sign(x)*(S+(a-S)*k.arm)}
+if(k.mode==='pelvis'){const w=1-sm(Math.abs(x),0.7,1.0),P=H+k.pv,L=k.tl;let Yp=y;if(y>A&&y<=H)Yp=A+(y-A)*(P-A)/(H-A);else if(y>H&&y<H+L)Yp=P+(y-H)*(H+L-P)/L;Y=y+w*(Yp-y)}else if(k.mode==='hip')Y=y<H?H-(H-y)*k.leg:y;else Y=y<=A?y:(y<=H?A+(y-A)*k.leg:y+(k.leg-1)*(H-A)*(1-(y>4.0?k.comp*sm(Math.abs(x),0.55,0.9):0)));if(y>4.0)Y+=k.ah*sm(Math.abs(x),0.55,0.9);if(!sh.head&&y>4.3)Y+=k.sh*sm(Math.abs(x),0.2,0.45)*(1-sm(Math.abs(x),0.7,1.0));if(!sh.head&&y>4.3)X=X+x*(k.sw-1)*sm(Math.abs(x),0.1,0.3)*(1-sm(Math.abs(x),0.7,1.0));if(k.mode!=='pelvis'&&!sh.head&&Math.abs(x)<0.9)Y+=k.pv*sm(y,H-0.8,H-0.25)*(1-sm(y,H+0.25,H+0.8));if(!sh.head&&k.tw!==1)X+=x*(k.tw-1)*sm(y,3.4,4.0)*(1-sm(y,4.9,5.3))*(1-sm(Math.abs(x),0.65,0.95));if(!sh.head&&y>4.0&&k.sx)X+=Math.sign(x)*k.sx*sm(Math.abs(x),0.55,0.95);if(!sh.head&&k.ta!==1&&y>4.0&&Math.abs(x)>0.7){const f=(k.ta-1)*sm(Math.abs(x),0.75,1.1)*(1-sm(Math.abs(x),2.3,2.5));Y+=(y-5.16)*f;Z+=(z-(-0.1+0.12*sm(Math.abs(x),1,2)))*f}if(!sh.head&&k.tg!==1&&y>0.7&&y<3.7&&Math.abs(x)<0.9){const f=(k.tg-1)*sm(y,0.7,1.1)*(1-sm(y,3.0,3.6)),cx=0.33*Math.sign(x);X+=(x-cx)*f;Z+=(z-(-0.04+0.13*sm(y,1.3,2.2)))*f}return[X,Y,Z]}
+function build(k){const out=D.slice();const dv=new DataView(out.buffer);const st=[];
+for(const s of SH){let cx=[0,0],cz=[0,0],nn=[0,0];
+if(s.shoe){for(let i=0;i<s.c;i++){const x=dv.getFloat32(s.off+i*12,true),z=dv.getFloat32(s.off+i*12+8,true);const q=x<0?0:1;cx[q]+=x;cz[q]+=z;nn[q]++}for(let q=0;q<2;q++){if(nn[q]){cx[q]/=nn[q];cz[q]/=nn[q]}}}
+let ch=0,an=null;if(s.hand){const sg=s.mn[0]<0?-1:1;an=mapPt(sg*Math.min(Math.abs(s.mn[0]),Math.abs(s.mx[0])),(s.mn[1]+s.mx[1])/2,(s.mn[2]+s.mx[2])/2,s,k)}
+for(let i=0;i<s.c;i++){const o=s.off+i*12;let x=dv.getFloat32(o,true),y=dv.getFloat32(o+4,true),z=dv.getFloat32(o+8,true);let r;
+if(s.shoe){const q=x<0?0:1;r=[cx[q]+(x-cx[q])*k.shoe,y*k.shoe+(k.mode==='hip'?H*(1-k.leg):0),cz[q]+(z-cz[q])*k.shoe]}else{r=mapPt(x,y,z,s,k);if(an)r=[an[0]+(r[0]-an[0])*k.hd,an[1]+(r[1]-an[1])*k.hd,an[2]+(r[2]-an[2])*k.hd]}
+if(Math.abs(r[0]-x)+Math.abs(r[1]-y)+Math.abs(r[2]-z)>1e-6)ch++;
+dv.setFloat32(o,r[0],true);dv.setFloat32(o+4,r[1],true);dv.setFloat32(o+8,r[2],true)}
+st.push({s,ch})}
+return{out,st}}
+const NL=['shoe','leg','arm','comp','ah','sh','sw','pv','hd','el','tl','tw','sx','ta','tg'];
+function K(){const o={mode:$('mode').value};for(const n of NL){const v=parseFloat($(n+'N').value);o[n]=isNaN(v)?+$(n).value:v}return o}
+function K_old(){return{mode:$('mode').value}}
+function bbox(dv,sh){let mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(const s of sh)for(let i=0;i<s.c;i++)for(let a=0;a<3;a++){const v=dv.getFloat32(s.off+i*12+a*4,true);if(v<mn[a])mn[a]=v;if(v>mx[a])mx[a]=v}return[mn,mx]}
+function update(){if(!D)return;const k=K();for(const n of['leg','comp']){$(n).disabled=$(n+'N').disabled=k.mode==='pelvis'}
+const r=build(k);window.__out=r.out;const o0=new DataView(D.buffer),o1=new DataView(r.out.buffer);
+const[b0,b1]=[bbox(o0,SH),bbox(o1,SH)];
+const nch=r.st.reduce((a,x)=>a+x.ch,0),nv=SH.reduce((a,s)=>a+s.c,0);
+$('nm').textContent=note;$('md').textContent=k.mode==='hip'?'골반 위치(높이 3.774)를 기준으로 아래쪽만 늘이거나 줄입니다. 1보다 작으면 발이 바닥에서 뜨고, 1보다 크면 바닥 아래로 내려갑니다. 몸통과 팔은 움직이지 않아 어깨가 벌어지지 않습니다.':'골반 위쪽 몸 전체를 같이 올리거나 내려서 발이 바닥에 닿습니다. 뼈대 기준점은 그대로라 다리를 줄이면 팔이 몸 쪽으로 붙고 늘리면 벌어집니다. "팔 위치 보정"을 올리면 팔 정점을 원래 높이 쪽으로 되돌려 줄여줍니다(어깨선이 조금 높아 보일 수 있음).';
+let h='<table><tr><th>항목</th><th>값</th></tr>'+
+'<tr><td>정점 묶음(shape)</td><td>'+SH.length+'개</td></tr><tr><td>전체 정점</td><td>'+nv.toLocaleString()+'개</td></tr>'+
+'<tr><td>이동한 정점</td><td>'+nch.toLocaleString()+'개</td></tr><tr><td>수정한 묶음</td><td>'+r.st.filter(x=>x.ch).length+'개</td></tr>'+
+'<tr><td>전체 높이</td><td>'+(b0[1][1]-b0[0][1]).toFixed(3)+' → '+(b1[1][1]-b1[0][1]).toFixed(3)+'</td></tr>'+
+'<tr><td>전체 폭</td><td>'+(b0[1][0]-b0[0][0]).toFixed(3)+' → '+(b1[1][0]-b1[0][0]).toFixed(3)+'</td></tr></table>'+
+'<p class="m">면(삼각형) 구성, 법선, UV, 변위(morph) 데이터는 바꾸지 않습니다. 정점 위치만 바뀌므로 데이터 손실은 없습니다. 뼈대(64개)는 이 파일에 없어서 건드리지 않습니다.</p>';
+$('rep').innerHTML=h;draw(o0,o1)}
+function draw(o0,o1){const c=$('cv'),g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);const sc=c.height/(7.2),ox=c.width/2,oy=c.height-18;
+const dot=(dv,col)=>{g.fillStyle=col;for(const s of SH)for(let i=0;i<s.c;i++){const x=dv.getFloat32(s.off+i*12,true),y=dv.getFloat32(s.off+i*12+4,true);g.fillRect(ox+x*sc*0.62,oy-y*sc,1.6,1.6)}};
+dot(o0,'rgba(130,140,155,.55)');dot(o1,'rgba(37,99,235,.9)')}
+NL.forEach(n=>{$(n).addEventListener('input',()=>{$(n+'N').value=$(n).value;update()});$(n+'N').addEventListener('input',()=>{const v=parseFloat($(n+'N').value);if(!isNaN(v))$(n).value=v;update()})});$('mode').addEventListener('change',update);
+const DEF={shoe:1.2,leg:1,arm:0.9,comp:0.5,ah:0,sh:0,sw:1,pv:-0.3,hd:1.3,el:0,tl:0.92,tw:1.2,sx:0.2,ta:1.2,tg:1.2},NEU={shoe:1,leg:1,arm:1,comp:0.5,ah:0,sh:0,sw:1,pv:0,hd:1,el:0,tl:0.8,tw:1,sx:0,ta:1,tg:1};
+function setAll(df,md){NL.forEach(n=>{$(n).value=df[n];$(n+'N').value=df[n]});$('mode').value=md;update()}
+$('rs').onclick=()=>setAll(DEF,'pelvis');$('nt').onclick=()=>setAll(NEU,'pelvis');
+setAll(DEF,'pelvis');
+$('f').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>load(r.result);r.readAsArrayBuffer(f)};
+$('dl').onclick=()=>{const k=K();const b=new Blob([window.__out],{type:'application/octet-stream'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='base_lodB_mod.ebo';a.click()};
+</script></body></html>
